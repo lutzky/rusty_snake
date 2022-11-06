@@ -32,8 +32,8 @@ fn game() {
 
     let mut last_key: Option<Key> = None;
 
-    let mut x = 5;
-    let mut y = 5;
+    let mut x: u16 = 5;
+    let mut y: u16 = 5;
 
     let stdout = stdout();
     let mut stdout = stdout.lock().into_raw_mode().unwrap();
@@ -50,10 +50,10 @@ fn game() {
             None => {}
             Some(Ok(Key::Esc)) => return,
             Some(Err(e)) => panic!("panic! {}", e),
-            Some(Ok(Key::Up)) => y -= 1,
-            Some(Ok(Key::Down)) => y += 1,
-            Some(Ok(Key::Left)) => x -= 1,
-            Some(Ok(Key::Right)) => x += 1,
+            Some(Ok(Key::Up)) => y = (y + 10 - 1) % 10,
+            Some(Ok(Key::Down)) => y = (y + 1) % 10,
+            Some(Ok(Key::Left)) => x = (x + 10 - 1) % 10,
+            Some(Ok(Key::Right)) => x = (x + 1) % 10,
             _ => {}
         }
 
@@ -66,10 +66,9 @@ fn game() {
             y,
         );
 
-        print!("{}X",cursor::Goto(x,y));
+        print!("{}X", cursor::Goto(x + 1, y + 1));
 
         stdout.flush();
-
 
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
