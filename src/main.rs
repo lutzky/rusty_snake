@@ -1,11 +1,12 @@
 extern crate termion;
 
-use std::io::{stdin, stdout, Write};
+use std::io::{stdout, Write};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
+use termion::{clear, cursor};
 
-fn getKey(
+fn get_key(
     keys: &mut termion::input::Keys<termion::AsyncReader>,
 ) -> Option<Result<Key, std::io::Error>> {
     let mut result: Option<Result<Key, std::io::Error>> = None;
@@ -29,31 +30,48 @@ fn game() {
 
     let mut keys = stdin.keys();
 
-    let mut lastNonNothing: Option<Key> = None;
+    let mut last_key: Option<Key> = None;
+
+    let mut x = 5;
+    let mut y = 5;
+
+    let stdout = stdout();
+    let mut stdout = stdout.lock().into_raw_mode().unwrap();
+
     loop {
-        let k = getKey(&mut keys);
+        let k = get_key(&mut keys);
         match k {
             None => {}
             Some(Err(_)) => {}
-            Some(Ok(k)) => lastNonNothing = Some(k),
+            Some(Ok(k)) => last_key = Some(k),
+        }
+
+        match k {
+            None => {}
+            Some(Ok(Key::Esc)) => return,
+            Some(Err(e)) => panic!("panic! {}", e),
+            Some(Ok(Key::Up)) => y -= 1,
+            Some(Ok(Key::Down)) => y += 1,
+            Some(Ok(Key::Left)) => x -= 1,
+            Some(Ok(Key::Right)) => x += 1,
+            _ => {}
         }
 
         print!(
-            "{}{}Last key: {:?}{}",
-            termion::clear::All,
-            termion::cursor::Goto(1, 2),
-            lastNonNothing,
-            termion::cursor::Goto(1, 1)
+            "{}{}Last key: {:?} (x: {}, y: {})",
+            clear::All,
+            cursor::Goto(1, 2),
+            last_key,
+            x,
+            y,
         );
 
-        match k {
-            None => println!("nothing"),
-            Some(Ok(Key::Esc)) => return,
-            Some(Err(e)) => panic!("panic! {}", e),
-            Some(Ok(k)) => println!("other: {:?}", k),
-        }
+        print!("{}X",cursor::Goto(x,y));
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        stdout.flush();
+
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
 
@@ -61,14 +79,9 @@ fn main() {
     let stdout = stdout();
     let mut stdout = stdout.lock().into_raw_mode().unwrap();
 
-    print!(
-        "{}{}{}",
-        termion::clear::All,
-        termion::cursor::Hide,
-        termion::cursor::Goto(1, 1)
-    );
+    print!("{}{}{}", clear::All, cursor::Hide, cursor::Goto(1, 1));
     stdout.flush().unwrap();
     game();
-    print!("{}", termion::cursor::Show);
+    print!("{}{}{}", clear::All, cursor::Goto(1, 1), cursor::Show);
     stdout.flush().unwrap();
 }
