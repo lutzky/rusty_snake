@@ -84,13 +84,13 @@ fn game() {
         print!(
             "{}{}Last key: {:?} (x: {}, y: {})",
             clear::All,
-            cursor::Goto(1, 2),
+            cursor::Goto(1, 1),
             last_key,
             x,
             y,
         );
 
-        print!("{}X", cursor::Goto(x + 1, y + 1));
+        print!("{}X", cursor::Goto(x + 1, y + 2));
 
         stdout.flush().expect("should be able to flush stdout");
 
