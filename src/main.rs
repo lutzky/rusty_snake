@@ -26,7 +26,7 @@ fn get_key(
     }
 }
 
-fn game() {
+fn game(args: Args) {
     let stdin = termion::async_stdin();
 
     let mut keys = stdin.keys();
@@ -45,8 +45,6 @@ fn game() {
 
     const FRAME_DELAY: Duration = Duration::from_millis(5);
     const MOTION_DELAY: Duration = Duration::from_millis(60);
-    const FIELD_WIDTH: u16 = 10;
-    const FIELD_HEIGHT: u16 = 10;
 
     loop {
         let k = get_key(&mut keys);
@@ -59,10 +57,10 @@ fn game() {
         if now.elapsed() > MOTION_DELAY {
             now = Instant::now();
             match direction {
-                Key::Up => y = (y + FIELD_HEIGHT - 1) % FIELD_HEIGHT,
-                Key::Down => y = (y + 1) % FIELD_HEIGHT,
-                Key::Left => x = (x + FIELD_WIDTH - 1) % FIELD_WIDTH,
-                Key::Right => x = (x + 1) % FIELD_WIDTH,
+                Key::Up => y = (y + args.field_height - 1) % args.field_height,
+                Key::Down => y = (y + 1) % args.field_height,
+                Key::Left => x = (x + args.field_width - 1) % args.field_width,
+                Key::Right => x = (x + 1) % args.field_width,
                 _ => todo!("use direction-specific enum"),
             }
         }
@@ -98,13 +96,27 @@ fn game() {
     }
 }
 
+#[derive(clap::Parser, Debug)]
+struct Args {
+    /// Height of the play field
+    #[arg(short = 'y', long, default_value_t = 10)]
+    field_height: u16,
+
+    /// Width of the play field
+    #[arg(short = 'x', long, default_value_t = 10)]
+    field_width: u16,
+}
+
 fn main() {
+    use clap::Parser;
+    let args = Args::parse();
+
     let stdout = stdout();
     let mut stdout = stdout.lock().into_raw_mode().unwrap();
 
     print!("{}{}{}", clear::All, cursor::Hide, cursor::Goto(1, 1));
     stdout.flush().unwrap();
-    game();
+    game(args);
     print!("{}{}{}", clear::All, cursor::Goto(1, 1), cursor::Show);
     stdout.flush().unwrap();
 }
