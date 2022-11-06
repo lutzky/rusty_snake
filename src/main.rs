@@ -38,6 +38,8 @@ fn game() {
     let stdout = stdout();
     let mut stdout = stdout.lock().into_raw_mode().unwrap();
 
+    let mut direction = Key::Right;
+
     loop {
         let k = get_key(&mut keys);
         match k {
@@ -46,14 +48,25 @@ fn game() {
             Some(Ok(k)) => last_key = Some(k),
         }
 
+        match direction {
+            Key::Up => y = (y + 10 - 1) % 10,
+            Key::Down => y = (y + 1) % 10,
+            Key::Left => x = (x + 10 - 1) % 10,
+            Key::Right => x = (x + 1) % 10,
+            _ => todo!("use direction-specific enum"),
+        }
+
         match k {
             None => {}
             Some(Ok(Key::Esc)) => return,
             Some(Err(e)) => panic!("panic! {}", e),
-            Some(Ok(Key::Up)) => y = (y + 10 - 1) % 10,
-            Some(Ok(Key::Down)) => y = (y + 1) % 10,
-            Some(Ok(Key::Left)) => x = (x + 10 - 1) % 10,
-            Some(Ok(Key::Right)) => x = (x + 1) % 10,
+
+            // TODO: Collapse these?
+            Some(Ok(Key::Up)) => direction = Key::Up,
+            Some(Ok(Key::Down)) => direction = Key::Down,
+            Some(Ok(Key::Left)) => direction = Key::Left,
+            Some(Ok(Key::Right)) => direction = Key::Right,
+
             _ => {}
         }
 
