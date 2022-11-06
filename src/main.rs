@@ -1,6 +1,7 @@
 extern crate termion;
 
 use std::io::{stdout, Write};
+use std::time::{Duration, Instant};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -40,6 +41,13 @@ fn game() {
 
     let mut direction = Key::Right;
 
+    let mut now = Instant::now();
+
+    const FRAME_DELAY: Duration = Duration::from_millis(5);
+    const MOTION_DELAY: Duration = Duration::from_millis(60);
+    const FIELD_WIDTH: u16 = 10;
+    const FIELD_HEIGHT: u16 = 10;
+
     loop {
         let k = get_key(&mut keys);
         match k {
@@ -48,12 +56,15 @@ fn game() {
             Some(Ok(k)) => last_key = Some(k),
         }
 
-        match direction {
-            Key::Up => y = (y + 10 - 1) % 10,
-            Key::Down => y = (y + 1) % 10,
-            Key::Left => x = (x + 10 - 1) % 10,
-            Key::Right => x = (x + 1) % 10,
-            _ => todo!("use direction-specific enum"),
+        if now.elapsed() > MOTION_DELAY {
+            now = Instant::now();
+            match direction {
+                Key::Up => y = (y + FIELD_HEIGHT - 1) % FIELD_HEIGHT,
+                Key::Down => y = (y + 1) % FIELD_HEIGHT,
+                Key::Left => x = (x + FIELD_WIDTH - 1) % FIELD_WIDTH,
+                Key::Right => x = (x + 1) % FIELD_WIDTH,
+                _ => todo!("use direction-specific enum"),
+            }
         }
 
         match k {
@@ -81,9 +92,9 @@ fn game() {
 
         print!("{}X", cursor::Goto(x + 1, y + 1));
 
-        stdout.flush();
+        stdout.flush().expect("should be able to flush stdout");
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(FRAME_DELAY);
     }
 }
 
