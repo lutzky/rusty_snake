@@ -95,13 +95,7 @@ impl Game {
 
             if self.last_motion.elapsed() > MOTION_DELAY {
                 self.last_motion = Instant::now();
-                match self.direction {
-                    Key::Up => self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height,
-                    Key::Down => self.pos.1 = (self.pos.1 + 1) % self.args.field_height,
-                    Key::Left => self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width,
-                    Key::Right => self.pos.0 = (self.pos.0 + 1) % self.args.field_width,
-                    _ => todo!("use direction-specific enum"),
-                }
+                self.move_head();
                 self.tail_coords.push_back(self.pos);
                 print!("{}X", self.position_cursor(self.pos));
                 match self.tail_coords.pop_front() {
@@ -141,6 +135,16 @@ impl Game {
             self.stdout.flush().expect("should be able to flush stdout");
 
             std::thread::sleep(FRAME_DELAY);
+        }
+    }
+
+    fn move_head(&mut self) {
+        match self.direction {
+            Key::Up => self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height,
+            Key::Down => self.pos.1 = (self.pos.1 + 1) % self.args.field_height,
+            Key::Left => self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width,
+            Key::Right => self.pos.0 = (self.pos.0 + 1) % self.args.field_width,
+            _ => todo!("use direction-specific enum"),
         }
     }
 }
