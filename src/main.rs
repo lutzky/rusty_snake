@@ -1,5 +1,6 @@
 extern crate termion;
 
+use std::collections::VecDeque;
 use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
 use termion::event::Key;
@@ -33,8 +34,8 @@ fn game(args: Args) {
 
     let mut last_key: Option<Key> = None;
 
-    let mut x: u16 = 5;
-    let mut y: u16 = 5;
+    let mut x: u16 = args.field_width / 2;
+    let mut y: u16 = args.field_height / 2;
 
     let stdout = stdout();
     let mut stdout = stdout.lock().into_raw_mode().unwrap();
@@ -43,8 +44,24 @@ fn game(args: Args) {
 
     let mut now = Instant::now();
 
+    let mut coords: VecDeque<(u16, u16)> = VecDeque::new();
+
+    // TODO(lutzky) collapse these?
+    for i in x - args.initial_snake_len..x {
+        coords.push_back((i, y));
+    }
+
+    for c in &coords {
+        print!("{}X", cursor::Goto(c.0 + 1, c.1 + 2));
+    }
+
+    stdout.flush();
+
     const FRAME_DELAY: Duration = Duration::from_millis(5);
     const MOTION_DELAY: Duration = Duration::from_millis(60);
+
+    // TODO(lutzky): Drop me, debug only
+    let mut last_popped: (u16, u16) = (0, 0);
 
     loop {
         let k = get_key(&mut keys);
@@ -63,6 +80,13 @@ fn game(args: Args) {
                 Key::Right => x = (x + 1) % args.field_width,
                 _ => todo!("use direction-specific enum"),
             }
+            coords.push_back((x, y));
+            match coords.pop_front() {
+                None => {}
+                Some((x, y)) => {
+                    last_popped = (x, y);
+                }
+            };
         }
 
         match k {
@@ -80,15 +104,21 @@ fn game(args: Args) {
         }
 
         print!(
-            "{}{}Last key: {:?} (x: {}, y: {})",
+            "{}{}Last key: {:?} pos: ({}, {}); last_popped: ({}, {})",
             clear::All,
             cursor::Goto(1, 1),
             last_key,
             x,
             y,
+            last_popped.0,
+            last_popped.1,
         );
 
-        print!("{}X", cursor::Goto(x + 1, y + 2));
+        for c in &coords {
+            print!("{}X", cursor::Goto(c.0 + 1, c.1 + 2));
+        }
+
+        //        print!("{}X", cursor::Goto(x + 1, y + 2));
 
         stdout.flush().expect("should be able to flush stdout");
 
@@ -105,6 +135,10 @@ struct Args {
     /// Width of the play field
     #[arg(short = 'x', long, default_value_t = 10)]
     field_width: u16,
+
+    /// Initial snake length
+    #[arg(long, default_value_t = 5)]
+    initial_snake_len: u16,
 }
 
 fn main() {
