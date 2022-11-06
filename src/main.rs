@@ -49,10 +49,7 @@ fn game(args: Args) {
     // TODO(lutzky) collapse these?
     for i in x - args.initial_snake_len..x {
         coords.push_back((i, y));
-    }
-
-    for c in &coords {
-        print!("{}X", cursor::Goto(c.0 + 1, c.1 + 2));
+        print!("{}X", cursor::Goto(i, y));
     }
 
     stdout.flush();
@@ -81,9 +78,11 @@ fn game(args: Args) {
                 _ => todo!("use direction-specific enum"),
             }
             coords.push_back((x, y));
+            print!("{}X", cursor::Goto(x, y));
             match coords.pop_front() {
                 None => {}
                 Some((x, y)) => {
+                    print!("{} ", cursor::Goto(x, y));
                     last_popped = (x, y);
                 }
             };
@@ -105,20 +104,14 @@ fn game(args: Args) {
 
         print!(
             "{}{}Last key: {:?} pos: ({}, {}); last_popped: ({}, {})",
-            clear::All,
             cursor::Goto(1, 1),
+            clear::CurrentLine,
             last_key,
             x,
             y,
             last_popped.0,
             last_popped.1,
         );
-
-        for c in &coords {
-            print!("{}X", cursor::Goto(c.0 + 1, c.1 + 2));
-        }
-
-        //        print!("{}X", cursor::Goto(x + 1, y + 2));
 
         stdout.flush().expect("should be able to flush stdout");
 
