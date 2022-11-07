@@ -122,17 +122,17 @@ impl Game {
                 };
             }
 
-            match k {
-                Some(Err(e)) => return Err(e),
-
-                Some(Ok(Key::Esc)) => return Ok(()),
-
-                Some(Ok(n @ Key::Up))
-                | Some(Ok(n @ Key::Down))
-                | Some(Ok(n @ Key::Left))
-                | Some(Ok(n @ Key::Right)) => self.direction = n,
-
-                _ => {}
+            {
+                use Key::*;
+                match k {
+                    Some(Err(e)) => return Err(e),
+                    Some(Ok(actual_key)) => match actual_key {
+                        Esc => return Ok(()),
+                        Up | Down | Left | Right => self.direction = actual_key,
+                        _ => {}
+                    },
+                    _ => {}
+                }
             }
 
             print!(
