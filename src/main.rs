@@ -74,9 +74,9 @@ impl Game {
         print!(
             "{goto_top_row}.{blank:-<width$}.\
             {goto_bottom_row}`{blank:-<width$}'",
-            goto_top_row=cursor::Goto(1, 2),
-            goto_bottom_row=cursor::Goto(1, self.args.field_height + 3),
-            blank="",
+            goto_top_row = cursor::Goto(1, 2),
+            goto_bottom_row = cursor::Goto(1, self.args.field_height + 3),
+            blank = "",
         );
         for i in 0..self.args.field_height {
             print!("{}|{:<width$}|", cursor::Goto(1, i + 3), "");
@@ -88,7 +88,6 @@ impl Game {
     }
 
     fn play(mut self) -> Result<(), std::io::Error> {
-        // TODO(lutzky) collapse these?
         for c in &self.tail_coords {
             print!("{}X", self.position_cursor(*c));
         }
@@ -124,31 +123,27 @@ impl Game {
             }
 
             match k {
-                None => {}
-                Some(Ok(Key::Esc)) => return Ok(()),
-                Some(Err(e)) => panic!("panic! {}", e),
+                Some(Err(e)) => return Err(e),
 
-                // TODO: Collapse these?
-                Some(Ok(Key::Up)) => self.direction = Key::Up,
-                Some(Ok(Key::Down)) => self.direction = Key::Down,
-                Some(Ok(Key::Left)) => self.direction = Key::Left,
-                Some(Ok(Key::Right)) => self.direction = Key::Right,
+                Some(Ok(Key::Esc)) => return Ok(()),
+
+                Some(Ok(n @ Key::Up))
+                | Some(Ok(n @ Key::Down))
+                | Some(Ok(n @ Key::Left))
+                | Some(Ok(n @ Key::Right)) => self.direction = n,
 
                 _ => {}
             }
 
             print!(
-                "{}{}Last key: {:?} pos: ({}, {}); last_popped: ({}, {})",
+                "{}{}Last key: {:?} pos:{:?}; last_popped:{last_popped:?}",
                 cursor::Goto(1, 1),
                 clear::CurrentLine,
                 self.last_key,
-                self.pos.0,
-                self.pos.1,
-                last_popped.0,
-                last_popped.1,
+                self.pos,
             );
 
-            self.stdout.flush().expect("should be able to flush stdout");
+            self.stdout.flush()?;
 
             std::thread::sleep(FRAME_DELAY);
         }
