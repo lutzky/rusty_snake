@@ -49,6 +49,10 @@ impl Board {
             }
         );
     }
+
+    fn get_tile(&self, (x, y): (u16, u16)) -> BoardItem {
+        self.grid[usize::from(x)][usize::from(y)]
+    }
 }
 
 struct Game {
@@ -84,6 +88,12 @@ enum BoardItem {
     Snake,
 }
 
+#[derive(Debug)]
+enum GameResult {
+    Quit,
+    Lost,
+}
+
 impl Game {
     fn new(args: Args) -> Self {
         let pos = (args.field_width / 2, args.field_height / 2);
@@ -116,7 +126,7 @@ impl Game {
         }
     }
 
-    fn play(mut self) -> Result<(), std::io::Error> {
+    fn play(mut self) -> Result<GameResult, std::io::Error> {
         for c in &self.tail_coords {
             self.board.set_tile(*c, BoardItem::Snake);
         }
@@ -140,6 +150,11 @@ impl Game {
             if self.last_motion.elapsed() > MOTION_DELAY {
                 self.last_motion = Instant::now();
                 self.move_head();
+
+                match self.board.get_tile(self.pos) {
+                    BoardItem::Empty => {}
+                    BoardItem::Snake => return Ok(GameResult::Lost),
+                }
                 self.tail_coords.push_back(self.pos);
                 self.board.set_tile(self.pos, BoardItem::Snake);
                 match self.tail_coords.pop_front() {
@@ -156,7 +171,7 @@ impl Game {
                 match k {
                     Some(Err(e)) => return Err(e),
                     Some(Ok(actual_key)) => match actual_key {
-                        Esc => return Ok(()),
+                        Esc => return Ok(GameResult::Quit),
                         Up | Down | Left | Right => self.direction = actual_key,
                         _ => {}
                     },
@@ -225,7 +240,16 @@ fn main() {
 
     print!("{}{}{}", clear::All, cursor::Hide, cursor::Goto(1, 1));
     stdout.flush().unwrap();
-    Game::new(args).play().expect("game shouldn't error out");
-    print!("{}{}{}", clear::All, cursor::Goto(1, 1), cursor::Show);
+    let result = Game::new(args).play().expect("game shouldn't error out");
+    stdout
+        .suspend_raw_mode()
+        .expect("raw mode should be suspended");
+
+    println!(
+        "{}{}Result: {:?}",
+        cursor::Goto(1, termion::terminal_size().unwrap().1),
+        cursor::Show,
+        result
+    );
     stdout.flush().unwrap();
 }
