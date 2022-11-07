@@ -27,6 +27,30 @@ fn get_key(
     }
 }
 
+struct Board {
+    grid: Vec<Vec<BoardItem>>,
+}
+
+impl Board {
+    fn new((x, y): (u16, u16)) -> Self {
+        Board {
+            grid: vec![vec![BoardItem::Empty; y.into()]; x.into()],
+        }
+    }
+
+    fn set_tile(&mut self, (x, y): (u16, u16), item: BoardItem) {
+        self.grid[usize::from(x)][usize::from(y)] = item;
+        print!(
+            "{}{}",
+            cursor::Goto(x + 2, y + 3),
+            match item {
+                BoardItem::Empty => ' ',
+                BoardItem::Snake => 'X',
+            }
+        );
+    }
+}
+
 struct Game {
     args: Args,
 
@@ -40,6 +64,8 @@ struct Game {
 
     direction: Key,
     last_motion: std::time::Instant,
+
+    board: Board,
 }
 
 fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
@@ -50,6 +76,12 @@ fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
     }
 
     result
+}
+
+#[derive(Copy, Clone)]
+enum BoardItem {
+    Empty,
+    Snake,
 }
 
 impl Game {
@@ -63,6 +95,7 @@ impl Game {
             tail_coords: gen_tail_coords(pos, args.initial_snake_len),
             direction: Key::Right,
             last_motion: Instant::now(),
+            board: Board::new((args.field_width, args.field_height)),
             args,
         };
         res.draw_bounds();
@@ -83,13 +116,9 @@ impl Game {
         }
     }
 
-    fn position_cursor(&self, pos: (u16, u16)) -> cursor::Goto {
-        cursor::Goto(pos.0 + 2, pos.1 + 3)
-    }
-
     fn play(mut self) -> Result<(), std::io::Error> {
         for c in &self.tail_coords {
-            print!("{}X", self.position_cursor(*c));
+            self.board.set_tile(*c, BoardItem::Snake);
         }
 
         self.stdout.flush()?;
@@ -112,11 +141,11 @@ impl Game {
                 self.last_motion = Instant::now();
                 self.move_head();
                 self.tail_coords.push_back(self.pos);
-                print!("{}X", self.position_cursor(self.pos));
+                self.board.set_tile(self.pos, BoardItem::Snake);
                 match self.tail_coords.pop_front() {
                     None => {}
                     Some(c) => {
-                        print!("{} ", self.position_cursor(c));
+                        self.board.set_tile(c, BoardItem::Empty);
                         last_popped = c;
                     }
                 };
