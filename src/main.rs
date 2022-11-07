@@ -72,14 +72,14 @@ impl Game {
     fn draw_bounds(&self) {
         let width = self.args.field_width.into();
         print!(
-            "{goto_top_row}.{blank:-<width$}.\
-            {goto_bottom_row}`{blank:-<width$}'",
+            "{goto_top_row}╓{blank:─<width$}╖\
+            {goto_bottom_row}╙{blank:─<width$}╜",
             goto_top_row = cursor::Goto(1, 2),
             goto_bottom_row = cursor::Goto(1, self.args.field_height + 3),
             blank = "",
         );
         for i in 0..self.args.field_height {
-            print!("{}|{:<width$}|", cursor::Goto(1, i + 3), "");
+            print!("{}║{:<width$}║", cursor::Goto(1, i + 3), "");
         }
     }
 
