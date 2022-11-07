@@ -55,7 +55,7 @@ fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
 impl Game {
     fn new(args: Args) -> Self {
         let pos = (args.field_width / 2, args.field_height / 2);
-        Self {
+        let res = Self {
             stdout: stdout().lock().into_raw_mode().unwrap(),
             keys: termion::async_stdin().keys(),
             last_key: None,
@@ -64,11 +64,27 @@ impl Game {
             direction: Key::Right,
             last_motion: Instant::now(),
             args,
+        };
+        res.draw_bounds();
+        return res;
+    }
+
+    fn draw_bounds(&self) {
+        let width = self.args.field_width.into();
+        print!(
+            "{goto_top_row}.{blank:-<width$}.\
+            {goto_bottom_row}`{blank:-<width$}'",
+            goto_top_row=cursor::Goto(1, 2),
+            goto_bottom_row=cursor::Goto(1, self.args.field_height + 3),
+            blank="",
+        );
+        for i in 0..self.args.field_height {
+            print!("{}|{:<width$}|", cursor::Goto(1, i + 3), "");
         }
     }
 
     fn position_cursor(&self, pos: (u16, u16)) -> cursor::Goto {
-        cursor::Goto(pos.0 + 1, pos.1 + 2)
+        cursor::Goto(pos.0 + 2, pos.1 + 3)
     }
 
     fn play(mut self) -> Result<(), std::io::Error> {
@@ -140,9 +156,13 @@ impl Game {
 
     fn move_head(&mut self) {
         match self.direction {
-            Key::Up => self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height,
+            Key::Up => {
+                self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height
+            }
             Key::Down => self.pos.1 = (self.pos.1 + 1) % self.args.field_height,
-            Key::Left => self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width,
+            Key::Left => {
+                self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width
+            }
             Key::Right => self.pos.0 = (self.pos.0 + 1) % self.args.field_width,
             _ => todo!("use direction-specific enum"),
         }
