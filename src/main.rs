@@ -164,15 +164,23 @@ impl Game {
     }
 }
 
+fn must_terminal_size() -> (u16, u16) {
+    let (x, y) = termion::terminal_size().expect("should be able to fetch terminal size");
+    (x - 2, y - 4)
+}
 #[derive(clap::Parser, Debug)]
 struct Args {
-    /// Height of the play field
-    #[arg(short = 'y', long, default_value_t = 10)]
-    field_height: u16,
-
     /// Width of the play field
-    #[arg(short = 'x', long, default_value_t = 10)]
+    #[arg(
+      short = 'x', long,
+      default_value_t = must_terminal_size().0)]
     field_width: u16,
+
+    /// Height of the play field
+    #[arg(
+      short = 'y', long,
+      default_value_t = must_terminal_size().1)]
+    field_height: u16,
 
     /// Initial snake length
     #[arg(long, default_value_t = 5)]
