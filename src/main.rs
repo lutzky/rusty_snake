@@ -74,7 +74,7 @@ struct Game {
 fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
     let mut result = VecDeque::new();
 
-    for i in pos.0 - length..pos.0 {
+    for i in pos.0 - length+1..pos.0+1 {
         result.push_back((i, pos.1));
     }
 
@@ -163,7 +163,7 @@ impl Game {
 
     fn play(mut self) -> Result<GameResult, std::io::Error> {
         for c in &self.tail_coords {
-            self.board.set_tile(*c, BoardItem::Horizontal /* TODO there appears to be a leftover here */);
+            self.board.set_tile(*c, BoardItem::Horizontal);
         }
 
         self.stdout.flush()?;
