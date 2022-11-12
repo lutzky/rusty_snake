@@ -41,11 +41,7 @@ impl Board {
     fn set_tile(&mut self, (x, y): (u16, u16), item: BoardItem) {
         self.grid[usize::from(x)][usize::from(y)] = item;
         let c: char = item.into();
-        print!(
-            "{}{}",
-            cursor::Goto(x + 2, y + 3),
-            c,
-        );
+        print!("{}{}", cursor::Goto(x + 2, y + 3), c,);
     }
 
     fn get_tile(&self, (x, y): (u16, u16)) -> BoardItem {
@@ -74,7 +70,7 @@ struct Game {
 fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
     let mut result = VecDeque::new();
 
-    for i in pos.0 - length+1..pos.0+1 {
+    for i in pos.0 - length + 1..pos.0 + 1 {
         result.push_back((i, pos.1));
     }
 
@@ -103,7 +99,11 @@ impl BoardItem {
             (Up, Right) | (Left, Down) => BoardItem::TopLeft,
             (Down, Right) | (Left, Up) => BoardItem::BottomLeft,
             (Right, Up) | (Down, Left) => BoardItem::BottomRight,
-            _ => todo!("use a specific direction enum rather than Key"),
+            _ => todo!(
+                "got ({:?},{:?}); use a specific direction enum rather than Key",
+                prev,
+                current
+            ),
         }
     }
 }
@@ -126,6 +126,21 @@ impl From<BoardItem> for char {
 enum GameResult {
     Quit,
     Lost,
+}
+
+fn opposite_direction(k: Key) -> termion::event::Key {
+    use Key::{Down, Left, Right, Up};
+
+    match k {
+        Left => Right,
+        Right => Left,
+        Up => Down,
+        Down => Up,
+        _ => todo!(
+            "asked for opposite of {:?}, you should really use a dedicated type",
+            k
+        ),
+    }
 }
 
 impl Game {
@@ -178,7 +193,10 @@ impl Game {
                 Some(Ok(k)) => self.last_key = Some(k),
             }
 
-            if self.last_motion.elapsed() > self.args.motion_delay{
+            if self.last_motion.elapsed() > self.args.motion_delay {
+                if self.direction == opposite_direction(self.prev_direction) {
+                    self.direction = self.prev_direction;
+                }
                 self.last_motion = Instant::now();
                 self.board.set_tile(
                     self.pos,
