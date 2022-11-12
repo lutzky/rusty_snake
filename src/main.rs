@@ -136,7 +136,6 @@ impl Game {
         const FRAME_DELAY: Duration = Duration::from_millis(5);
         const MOTION_DELAY: Duration = Duration::from_millis(60);
 
-        // TODO(lutzky): Drop me, debug only
         let mut last_popped: (u16, u16) = (0, 0);
 
         loop {
