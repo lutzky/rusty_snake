@@ -168,9 +168,6 @@ impl Game {
 
         self.stdout.flush()?;
 
-        const FRAME_DELAY: Duration = Duration::from_millis(5);
-        const MOTION_DELAY: Duration = Duration::from_millis(60);
-
         let mut last_popped: (u16, u16) = (0, 0);
 
         loop {
@@ -181,7 +178,7 @@ impl Game {
                 Some(Ok(k)) => self.last_key = Some(k),
             }
 
-            if self.last_motion.elapsed() > MOTION_DELAY {
+            if self.last_motion.elapsed() > self.args.motion_delay{
                 self.last_motion = Instant::now();
                 self.board.set_tile(
                     self.pos,
@@ -231,7 +228,7 @@ impl Game {
 
             self.stdout.flush()?;
 
-            std::thread::sleep(FRAME_DELAY);
+            std::thread::sleep(self.args.frame_delay);
         }
     }
 
@@ -271,6 +268,19 @@ struct Args {
     /// Initial snake length
     #[arg(long, default_value_t = 5)]
     initial_snake_len: u16,
+
+    /// Amount of milliseconds to wait after each frame
+    #[arg(long, value_parser = parse_duration_from_millis, default_value = "5")]
+    frame_delay: Duration,
+
+    /// Amount of milliseconds to wait between movements of snake
+    #[arg(long,  value_parser = parse_duration_from_millis, default_value = "60")]
+    motion_delay: Duration,
+}
+
+fn parse_duration_from_millis(arg: &str) -> Result<Duration, std::num::ParseIntError> {
+    let millis = arg.parse()?;
+    Ok(Duration::from_millis(millis))
 }
 
 fn main() {
