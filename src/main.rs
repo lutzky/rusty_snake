@@ -40,13 +40,11 @@ impl Board {
 
     fn set_tile(&mut self, (x, y): (u16, u16), item: BoardItem) {
         self.grid[usize::from(x)][usize::from(y)] = item;
+        let c: char = item.into();
         print!(
             "{}{}",
             cursor::Goto(x + 2, y + 3),
-            match item {
-                BoardItem::Empty => ' ',
-                BoardItem::Snake => 'X',
-            }
+            c,
         );
     }
 
@@ -66,6 +64,7 @@ struct Game {
     pos: (u16, u16),
     tail_coords: VecDeque<(u16, u16)>,
 
+    prev_direction: Key,
     direction: Key,
     last_motion: std::time::Instant,
 
@@ -85,7 +84,42 @@ fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
 #[derive(Copy, Clone)]
 enum BoardItem {
     Empty,
-    Snake,
+    Horizontal,
+    Vertical,
+    TopRight,
+    TopLeft,
+    BottomLeft,
+    BottomRight,
+}
+
+impl BoardItem {
+    fn from_pair(prev: Key, current: Key) -> Self {
+        use Key::{Down, Left, Right, Up};
+
+        match (prev, current) {
+            (Right, Right) | (Left, Left) => BoardItem::Horizontal,
+            (Up, Up) | (Down, Down) => BoardItem::Vertical,
+            (Right, Down) | (Up, Left) => BoardItem::TopRight,
+            (Up, Right) | (Left, Down) => BoardItem::TopLeft,
+            (Down, Right) | (Left, Up) => BoardItem::BottomLeft,
+            (Right, Up) | (Down, Left) => BoardItem::BottomRight,
+            _ => todo!("use a specific direction enum rather than Key"),
+        }
+    }
+}
+
+impl From<BoardItem> for char {
+    fn from(val: BoardItem) -> Self {
+        match val {
+            BoardItem::Empty => ' ',
+            BoardItem::Horizontal => '═',
+            BoardItem::Vertical => '║',
+            BoardItem::TopRight => '╗',
+            BoardItem::TopLeft => '╔',
+            BoardItem::BottomLeft => '╚',
+            BoardItem::BottomRight => '╝',
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -104,6 +138,7 @@ impl Game {
             pos,
             tail_coords: gen_tail_coords(pos, args.initial_snake_len),
             direction: Key::Right,
+            prev_direction: Key::Right,
             last_motion: Instant::now(),
             board: Board::new((args.field_width, args.field_height)),
             args,
@@ -128,7 +163,7 @@ impl Game {
 
     fn play(mut self) -> Result<GameResult, std::io::Error> {
         for c in &self.tail_coords {
-            self.board.set_tile(*c, BoardItem::Snake);
+            self.board.set_tile(*c, BoardItem::Horizontal /* TODO there appears to be a leftover here */);
         }
 
         self.stdout.flush()?;
@@ -148,14 +183,22 @@ impl Game {
 
             if self.last_motion.elapsed() > MOTION_DELAY {
                 self.last_motion = Instant::now();
+                self.board.set_tile(
+                    self.pos,
+                    BoardItem::from_pair(self.prev_direction, self.direction),
+                );
+                self.prev_direction = self.direction;
                 self.move_head();
 
                 match self.board.get_tile(self.pos) {
                     BoardItem::Empty => {}
-                    BoardItem::Snake => return Ok(GameResult::Lost),
+                    _ => return Ok(GameResult::Lost),
                 }
                 self.tail_coords.push_back(self.pos);
-                self.board.set_tile(self.pos, BoardItem::Snake);
+                self.board.set_tile(
+                    self.pos,
+                    BoardItem::from_pair(self.prev_direction, self.direction),
+                );
                 match self.tail_coords.pop_front() {
                     None => {}
                     Some(c) => {
