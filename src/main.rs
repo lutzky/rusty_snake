@@ -70,16 +70,6 @@ struct Game {
     board: Board,
 }
 
-fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
-    let mut result = VecDeque::new();
-
-    for i in pos.0 - length + 1..pos.0 + 1 {
-        result.push_back((i, pos.1));
-    }
-
-    result
-}
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum Direction {
     Left,
@@ -174,7 +164,7 @@ impl Game {
             lengthenings: args.initial_snake_len,
             last_key: None,
             pos,
-            tail_coords: gen_tail_coords(pos, 1), // TODO simplify, always 1
+            tail_coords: VecDeque::from([pos]),
             direction: Direction::Right,
             prev_direction: Direction::Right,
             last_motion: Instant::now(),
