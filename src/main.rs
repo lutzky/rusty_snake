@@ -60,8 +60,8 @@ struct Game {
     pos: (u16, u16),
     tail_coords: VecDeque<(u16, u16)>,
 
-    prev_direction: Key,
-    direction: Key,
+    prev_direction: Direction,
+    direction: Direction,
     last_motion: std::time::Instant,
 
     board: Board,
@@ -77,6 +77,28 @@ fn gen_tail_coords(pos: (u16, u16), length: u16) -> VecDeque<(u16, u16)> {
     result
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+impl TryFrom<Key> for Direction {
+    type Error = String;
+
+    fn try_from(k: Key) -> Result<Self, Self::Error> {
+        match k {
+            Key::Left => Ok(Self::Left),
+            Key::Right => Ok(Self::Right),
+            Key::Up => Ok(Self::Up),
+            Key::Down => Ok(Self::Down),
+            _ => Err(format!("cannot convert {:?} to direction", k)),
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 enum BoardItem {
     Empty,
@@ -89,8 +111,8 @@ enum BoardItem {
 }
 
 impl BoardItem {
-    fn from_pair(prev: Key, current: Key) -> Self {
-        use Key::{Down, Left, Right, Up};
+    fn from_pair(prev: Direction, current: Direction) -> Self {
+        use Direction::{Down, Left, Right, Up};
 
         match (prev, current) {
             (Right, Right) | (Left, Left) => BoardItem::Horizontal,
@@ -99,11 +121,10 @@ impl BoardItem {
             (Up, Right) | (Left, Down) => BoardItem::TopLeft,
             (Down, Right) | (Left, Up) => BoardItem::BottomLeft,
             (Right, Up) | (Down, Left) => BoardItem::BottomRight,
-            _ => todo!(
-                "got ({:?},{:?}); use a specific direction enum rather than Key",
-                prev,
-                current
-            ),
+
+            // Technically correct, though should-be-impossible options
+            (Up, Down) | (Down, Up) => BoardItem::Vertical,
+            (Right, Left) | (Left, Right) => BoardItem::Horizontal,
         }
     }
 }
@@ -128,18 +149,16 @@ enum GameResult {
     Lost,
 }
 
-fn opposite_direction(k: Key) -> termion::event::Key {
-    use Key::{Down, Left, Right, Up};
+impl Direction {
+    fn opposite(self) -> Self {
+        use Direction::{Down, Left, Right, Up};
 
-    match k {
-        Left => Right,
-        Right => Left,
-        Up => Down,
-        Down => Up,
-        _ => todo!(
-            "asked for opposite of {:?}, you should really use a dedicated type",
-            k
-        ),
+        match self {
+            Left => Right,
+            Right => Left,
+            Up => Down,
+            Down => Up,
+        }
     }
 }
 
@@ -152,8 +171,8 @@ impl Game {
             last_key: None,
             pos,
             tail_coords: gen_tail_coords(pos, args.initial_snake_len),
-            direction: Key::Right,
-            prev_direction: Key::Right,
+            direction:Direction::Right,
+            prev_direction:Direction::Right,
             last_motion: Instant::now(),
             board: Board::new((args.field_width, args.field_height)),
             args,
@@ -194,7 +213,7 @@ impl Game {
             }
 
             if self.last_motion.elapsed() > self.args.motion_delay {
-                if self.direction == opposite_direction(self.prev_direction) {
+                if self.direction == self.prev_direction.opposite() {
                     self.direction = self.prev_direction;
                 }
                 self.last_motion = Instant::now();
@@ -229,8 +248,11 @@ impl Game {
                     Some(Err(e)) => return Err(e),
                     Some(Ok(actual_key)) => match actual_key {
                         Esc => return Ok(GameResult::Quit),
-                        Up | Down | Left | Right => self.direction = actual_key,
-                        _ => {}
+                        _ => {
+                            if let Ok(d) = actual_key.try_into() {
+                                self.direction = d;
+                            }
+                        }
                     },
                     _ => {}
                 }
@@ -251,16 +273,17 @@ impl Game {
     }
 
     fn move_head(&mut self) {
+        use Direction::{Up,Down,Left,Right};
+
         match self.direction {
-            Key::Up => {
+            Up => {
                 self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height
             }
-            Key::Down => self.pos.1 = (self.pos.1 + 1) % self.args.field_height,
-            Key::Left => {
+            Down => self.pos.1 = (self.pos.1 + 1) % self.args.field_height,
+            Left => {
                 self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width
             }
-            Key::Right => self.pos.0 = (self.pos.0 + 1) % self.args.field_width,
-            _ => todo!("use direction-specific enum"),
+            Right => self.pos.0 = (self.pos.0 + 1) % self.args.field_width,
         }
     }
 }
