@@ -1,5 +1,6 @@
 extern crate termion;
 
+use rand::Rng;
 use std::collections::VecDeque;
 use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
@@ -64,6 +65,8 @@ struct Game {
     direction: Direction,
     last_motion: std::time::Instant,
 
+    apple_pos: (u16, u16),
+
     // Times to lengthen the tail
     lengthenings: u8,
 
@@ -101,6 +104,7 @@ enum BoardItem {
     TopLeft,
     BottomLeft,
     BottomRight,
+    Apple,
 }
 
 impl BoardItem {
@@ -132,6 +136,7 @@ impl From<BoardItem> for char {
             BoardItem::TopLeft => '╔',
             BoardItem::BottomLeft => '╚',
             BoardItem::BottomRight => '╝',
+            BoardItem::Apple => 'o',
         }
     }
 }
@@ -163,6 +168,7 @@ impl Game {
             keys: termion::async_stdin().keys(),
             lengthenings: args.initial_snake_len,
             last_key: None,
+            apple_pos: (0, 0),
             pos,
             tail_coords: VecDeque::from([pos]),
             direction: Direction::Right,
@@ -173,6 +179,23 @@ impl Game {
         };
         res.draw_bounds();
         res
+    }
+
+    fn move_apple(&mut self) {
+        let mut rng = rand::thread_rng();
+        let mut new_apple_pos: (u16, u16) = (0, 0);
+
+        loop {
+            new_apple_pos.0 = rng.gen_range(0..self.args.field_width);
+            new_apple_pos.1 = rng.gen_range(0..self.args.field_height);
+            if let BoardItem::Empty = self.board.get_tile(new_apple_pos) {
+                break;
+            }
+        }
+
+        self.board.set_tile(self.apple_pos, BoardItem::Empty);
+        self.apple_pos = new_apple_pos;
+        self.board.set_tile(self.apple_pos, BoardItem::Apple);
     }
 
     fn draw_bounds(&self) {
@@ -193,6 +216,8 @@ impl Game {
         for c in &self.tail_coords {
             self.board.set_tile(*c, BoardItem::Horizontal);
         }
+
+        self.move_apple();
 
         self.stdout.flush()?;
 
@@ -220,6 +245,10 @@ impl Game {
 
                 match self.board.get_tile(self.pos) {
                     BoardItem::Empty => {}
+                    BoardItem::Apple => {
+                        self.move_apple();
+                        self.lengthenings += 2;
+                    }
                     _ => return Ok(GameResult::Lost),
                 }
                 self.tail_coords.push_back(self.pos);
