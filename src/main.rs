@@ -178,7 +178,7 @@ impl Game {
             args,
         };
         res.draw_bounds();
-        return res;
+        res
     }
 
     fn draw_bounds(&self) {
