@@ -64,6 +64,9 @@ struct Game {
     direction: Direction,
     last_motion: std::time::Instant,
 
+    // Times to lengthen the tail
+    lengthenings: u8,
+
     board: Board,
 }
 
@@ -168,11 +171,12 @@ impl Game {
         let res = Self {
             stdout: stdout().lock().into_raw_mode().unwrap(),
             keys: termion::async_stdin().keys(),
+            lengthenings: args.initial_snake_len,
             last_key: None,
             pos,
-            tail_coords: gen_tail_coords(pos, args.initial_snake_len),
-            direction:Direction::Right,
-            prev_direction:Direction::Right,
+            tail_coords: gen_tail_coords(pos, 1), // TODO simplify, always 1
+            direction: Direction::Right,
+            prev_direction: Direction::Right,
             last_motion: Instant::now(),
             board: Board::new((args.field_width, args.field_height)),
             args,
@@ -233,21 +237,24 @@ impl Game {
                     self.pos,
                     BoardItem::from_pair(self.prev_direction, self.direction),
                 );
-                match self.tail_coords.pop_front() {
-                    None => {}
-                    Some(c) => {
-                        self.board.set_tile(c, BoardItem::Empty);
-                        last_popped = c;
-                    }
+                match self.lengthenings {
+                    0 => match self.tail_coords.pop_front() {
+                        None => {}
+                        Some(c) => {
+                            self.board.set_tile(c, BoardItem::Empty);
+                            last_popped = c;
+                        }
+                    },
+                    _ => self.lengthenings -= 1,
                 };
             }
 
             {
-                use Key::*;
                 match k {
                     Some(Err(e)) => return Err(e),
                     Some(Ok(actual_key)) => match actual_key {
-                        Esc => return Ok(GameResult::Quit),
+                        Key::Esc => return Ok(GameResult::Quit),
+                        Key::Char('+') => self.lengthenings += 1,
                         _ => {
                             if let Ok(d) = actual_key.try_into() {
                                 self.direction = d;
@@ -273,16 +280,12 @@ impl Game {
     }
 
     fn move_head(&mut self) {
-        use Direction::{Up,Down,Left,Right};
+        use Direction::{Down, Left, Right, Up};
 
         match self.direction {
-            Up => {
-                self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height
-            }
+            Up => self.pos.1 = (self.pos.1 + self.args.field_height - 1) % self.args.field_height,
             Down => self.pos.1 = (self.pos.1 + 1) % self.args.field_height,
-            Left => {
-                self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width
-            }
+            Left => self.pos.0 = (self.pos.0 + self.args.field_width - 1) % self.args.field_width,
             Right => self.pos.0 = (self.pos.0 + 1) % self.args.field_width,
         }
     }
@@ -308,7 +311,7 @@ struct Args {
 
     /// Initial snake length
     #[arg(long, default_value_t = 5)]
-    initial_snake_len: u16,
+    initial_snake_len: u8,
 
     /// Amount of milliseconds to wait after each frame
     #[arg(long, value_parser = parse_duration_from_millis, default_value = "5")]
