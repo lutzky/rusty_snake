@@ -2,7 +2,9 @@ extern crate termion;
 
 use rand::Rng;
 use std::collections::VecDeque;
+use std::error::Error;
 use std::io::{stdout, Write};
+use std::process;
 use std::time::{Duration, Instant};
 use termion::event::Key;
 use termion::input::TermRead;
@@ -161,10 +163,10 @@ impl Direction {
 }
 
 impl Game {
-    fn new(args: Args) -> Self {
+    fn new(args: Args) -> Result<Self, Box<dyn Error>> {
         let pos = (args.field_width / 2, args.field_height / 2);
         let res = Self {
-            stdout: stdout().lock().into_raw_mode().unwrap(),
+            stdout: stdout().lock().into_raw_mode()?,
             keys: termion::async_stdin().keys(),
             lengthenings: args.initial_snake_len,
             last_key: None,
@@ -178,7 +180,7 @@ impl Game {
             args,
         };
         res.draw_bounds();
-        res
+        Ok(res)
     }
 
     fn move_apple(&mut self) {
@@ -269,10 +271,14 @@ impl Game {
             }
 
             {
+                use std::io::{Error, ErrorKind::Other};
                 match k {
                     Some(Err(e)) => return Err(e),
                     Some(Ok(actual_key)) => match actual_key {
                         Key::Esc => return Ok(GameResult::Quit),
+                        Key::Char('p') => {
+                            return Err(Error::new(Other, "intentional in-game panic"))
+                        }
                         Key::Char('+') => self.lengthenings += 1,
                         _ => {
                             if let Ok(d) = actual_key.try_into() {
@@ -350,21 +356,40 @@ fn main() {
     use clap::Parser;
     let args = Args::parse();
 
+    match run(args) {
+        Err(e) => {
+            if let Err(e) = restore_terminal() {
+                eprintln!(
+                    "Failed to restore terminal while recovering from error: {}",
+                    e
+                );
+            }
+            eprintln!("Application error: {}", e);
+            process::exit(1);
+        }
+        Ok(r) => println!("Result: {:?}", r),
+    }
+}
+
+fn run(args: Args) -> Result<GameResult, Box<dyn Error>> {
     let stdout = stdout();
-    let mut stdout = stdout.lock().into_raw_mode().unwrap();
-
+    let mut stdout = stdout.lock().into_raw_mode()?;
     print!("{}{}{}", clear::All, cursor::Hide, cursor::Goto(1, 1));
-    stdout.flush().unwrap();
-    let result = Game::new(args).play().expect("game shouldn't error out");
-    stdout
-        .suspend_raw_mode()
-        .expect("raw mode should be suspended");
+    stdout.flush()?;
+    let result = Game::new(args)?.play()?;
+    restore_terminal()?;
+    Ok(result)
+}
 
+fn restore_terminal() -> Result<(), Box<dyn Error>> {
+    let stdout = stdout();
+    let mut stdout = stdout.lock().into_raw_mode()?;
+    stdout.suspend_raw_mode()?;
     println!(
-        "{}{}Result: {:?}",
-        cursor::Goto(1, termion::terminal_size().unwrap().1),
+        "{}{}",
+        cursor::Goto(1, termion::terminal_size()?.1),
         cursor::Show,
-        result
     );
-    stdout.flush().unwrap();
+    stdout.flush()?;
+    Ok(())
 }
